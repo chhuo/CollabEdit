@@ -2,7 +2,7 @@
   "name": "collab-edit",
   "displayName": "CollabEdit - 多人协作编程",
   "description": "通过 WebSocket 实现多人协作编程，支持文件同步、光标共享",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "collab-edit",
   "engines": {
     "vscode": "^1.85.0"
