@@ -1,0 +1,135 @@
+{
+  "name": "collab-edit",
+  "displayName": "CollabEdit - 多人协作编程",
+  "description": "通过 WebSocket 实现多人协作编程，支持文件同步、光标共享",
+  "version": "0.0.2",
+  "publisher": "collab-edit",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "collabEdit.startHost",
+        "title": "CollabEdit: 开启协作 (Host)",
+        "icon": "$(broadcast)"
+      },
+      {
+        "command": "collabEdit.joinSession",
+        "title": "CollabEdit: 加入协作 (Client)",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "collabEdit.disconnect",
+        "title": "CollabEdit: 断开连接",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "collabEdit.followUser",
+        "title": "CollabEdit: 跟随用户",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "collabEdit.unfollowUser",
+        "title": "CollabEdit: 取消跟随",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "collabEdit.gotoUser",
+        "title": "跳转到用户位置",
+        "icon": "$(arrow-right)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "collabEdit",
+          "title": "CollabEdit",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "collabEdit": [
+        {
+          "id": "collabEditUsers",
+          "name": "协作用户"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "collabEditUsers",
+        "contents": "尚未连接到协作会话。\n[开启协作 (Host)](command:collabEdit.startHost)\n[加入协作 (Client)](command:collabEdit.joinSession)\n\nHost: 在本地开启服务器，其他人连接到你。\nClient: 连接到已开启的协作服务器。"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "collabEdit.startHost",
+          "when": "view == collabEditUsers",
+          "group": "navigation"
+        },
+        {
+          "command": "collabEdit.joinSession",
+          "when": "view == collabEditUsers",
+          "group": "navigation"
+        },
+        {
+          "command": "collabEdit.disconnect",
+          "when": "view == collabEditUsers",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "collabEdit.gotoUser",
+          "when": "view == collabEditUsers && viewItem == user",
+          "group": "inline"
+        },
+        {
+          "command": "collabEdit.followUser",
+          "when": "view == collabEditUsers && viewItem == user",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CollabEdit",
+      "properties": {
+        "collabEdit.port": {
+          "type": "number",
+          "default": 18520,
+          "description": "Host 模式下 WebSocket 服务器端口"
+        },
+        "collabEdit.username": {
+          "type": "string",
+          "default": "",
+          "description": "协作时显示的用户名"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
