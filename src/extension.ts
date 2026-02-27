@@ -7,7 +7,7 @@ import { FileSync } from './fileSync';
 import { FileWatcher, FileChangeType } from './fileWatcher';
 import { DocumentSync } from './documentSync';
 import { CursorDecorator } from './cursorDecorator';
-import { UserTreeDataProvider } from './userTreeView';
+import { UserTreeDataProvider, UserTreeItem } from './userTreeView';
 import {
     MessageType, UserInfo,
     CursorUpdateMessage, ActiveFileChangeMessage,
@@ -149,6 +149,14 @@ async function startHost() {
         vscode.window.showInformationMessage(
             `协作服务器已启动！端口: ${port}。请使用 frp 映射此端口供其他人连接。`
         );
+
+        // 发送当前活跃文件（如果有）
+        const activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor && activeEditor.document.uri.scheme === 'file') {
+            const relativePath = toRelativePath(activeEditor.document.uri.fsPath, workspaceRoot);
+            server.updateHostUser({ activeFile: relativePath });
+            userTreeProvider.updateUsers(server.getAllUsers(), hostUser.userId);
+        }
 
     } catch (error: any) {
         vscode.window.showErrorMessage(`启动失败: ${error.message}`);
@@ -341,6 +349,25 @@ async function joinSession() {
 
         // 请求文件清单进行初始同步
         client.send({ type: MessageType.FileManifestRequest });
+
+        // 发送当前活跃文件（如果有）
+        const activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor && activeEditor.document.uri.scheme === 'file') {
+            const relativePath = toRelativePath(activeEditor.document.uri.fsPath, workspaceRoot);
+            const activeMsg: ActiveFileChangeMessage = {
+                type: MessageType.ActiveFileChange,
+                userId: userId,
+                path: relativePath,
+            };
+            client.send(activeMsg);
+            // 更新本地用户信息
+            const users = client.getUsers();
+            const self = users.find(u => u.userId === userId);
+            if (self) {
+                self.activeFile = relativePath;
+                userTreeProvider.updateUsers(users, userId);
+            }
+        }
 
     } catch (error: any) {
         vscode.window.showErrorMessage(`连接失败: ${error.message}`);
@@ -537,6 +564,13 @@ function setupLocalEditorEvents(workspaceRoot: string, userId: string) {
                 userTreeProvider.updateUsers(server.getAllUsers(), userId);
             } else if (mode === 'client' && client) {
                 client.send(msg);
+                // 更新本地用户信息中自己的 activeFile
+                const users = client.getUsers();
+                const self = users.find(u => u.userId === userId);
+                if (self) {
+                    self.activeFile = relativePath;
+                    userTreeProvider.updateUsers(users, userId);
+                }
             }
         })
     );
@@ -546,10 +580,18 @@ function setupLocalEditorEvents(workspaceRoot: string, userId: string) {
 // 跟随用户
 // ============================================================
 
-async function followUser(userId?: string) {
+async function followUser(arg?: string | UserTreeItem) {
     if (mode === 'none') {
         vscode.window.showWarningMessage('请先连接到协作会话');
         return;
+    }
+
+    // 从 TreeItem 中提取 userId
+    let userId: string | undefined;
+    if (arg instanceof UserTreeItem) {
+        userId = arg.user.userId;
+    } else {
+        userId = arg;
     }
 
     if (!userId) {
@@ -595,7 +637,15 @@ async function unfollowUser() {
     }
 }
 
-async function gotoUser(userId?: string) {
+async function gotoUser(arg?: string | UserTreeItem) {
+    // 从 TreeItem 中提取 userId
+    let userId: string | undefined;
+    if (arg instanceof UserTreeItem) {
+        userId = arg.user.userId;
+    } else {
+        userId = arg;
+    }
+
     if (!userId) { return; }
     if (cursorDecorator) {
         await cursorDecorator.gotoUser(userId);
